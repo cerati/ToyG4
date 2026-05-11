@@ -1,149 +1,156 @@
-# Geant4 Liquid Argon Muon Voxel Study
+# Geant4 Liquid Argon Voxel Scan
 
-This project builds a minimal Geant4 application for single-muon energy deposition in liquid argon and writes sparse voxelized output to a ROOT file.
+This project simulates single-particle events in liquid argon and writes event-level sparse voxel energy deposition to a ROOT file.
 
-## Voxelization
+## What It Simulates
 
-- Default voxel size: `5 mm`
-- Configurable via macro command (after `/run/initialize`):
-  - `/toyG4/detector/setVoxelSize <size> <unit>`
-- Example: `/toyG4/detector/setVoxelSize 1 cm`
+- Geometry: liquid argon sphere of radius 20 m in a vacuum world.
+- Active volume: the full liquid argon sphere.
+- Primary generator: one particle per event, shot from the origin with isotropic direction.
+- Physics: QGSP_BERT with G4EmStandardPhysics.
 
-## Geometry
+## Quick Start
 
-- Active volume: liquid argon sphere with radius `20 m`
-- World volume: vacuum box large enough to contain the active volume
-- The whole liquid-argon sphere is treated as active
-
-## Primary Particle
-
-- One particle per event
-- Initial position: origin
-- Initial direction: isotropic
-
-Default configuration (same as original behavior):
-
-- PDG `13` (`mu-`)
-- Kinetic energy sampled uniformly in `[0.1, 10] GeV`
-
-Generator is configurable by PDG code with a separate kinetic-energy range for each PDG.
-At each event, one configured PDG entry is selected uniformly, then kinetic energy is sampled
-uniformly in that PDG-specific range.
-
-Macro commands:
-
-- `/toyG4/generator/addPdgRange <pdg> <emin> <emax> <unit>`
-- `/toyG4/generator/clearPdgs`
-- `/toyG4/generator/listPdgs`
-
-Use these commands after `/run/initialize` in batch macros.
-
-Examples:
-
-- `/toyG4/generator/addPdgRange 13 0.1 10 GeV`
-- `/toyG4/generator/addPdgRange -13 0.1 10 GeV`
-- `/toyG4/generator/addPdgRange 2212 0.2 5 GeV`
-
-## Physics
-
-- Hadronic physics list: `QGSP_BERT`
-- Electromagnetic physics: `G4EmStandardPhysics`
-
-## Energy Deposition
-
-Energy deposition is taken from Geant4 step energy loss:
-
-- `G4Step::GetTotalEnergyDeposit()`
-- Only steps inside the active liquid-argon volume are counted
-- Deposited energy is accumulated into `5 mm` cubes
-- Cubes are stored sparsely, so only cubes with nonzero deposited energy are written
-
-The voxel coordinate written to output is the cube center in `mm`.
-
-## Derived LAr Quanta Model
-
-In addition to `edep`, the code derives scintillation photons and surviving ionization electrons from deposited energy using a simple parameterized liquid-argon model.
-
-Constants used:
-
-- `W = 23.6 eV`
-- Exciton-to-ion ratio `alpha = 0.21`
-- Recombination fraction `r = 0.5`
-
-Per voxel:
-
-- `Nq = Edep / W`
-- `Ni = Nq / (1 + alpha)`
-- `Nex = Nq - Ni`
-- `Nphot = Nex + r * Ni`
-- `Nelec = (1 - r) * Ni`
-
-This is a simple yield model only. It is not a field-dependent recombination model and does not simulate optical photon transport or electron drift.
-
-## Output
-
-Default output file:
-
-- `lar_muon_voxels.root`
-
-ROOT tree:
-
-- `events`
-
-Branches:
-
-- `event`
-- `pdgCode`
-- `energy_MeV`
-- `px_MeV`
-- `py_MeV`
-- `pz_MeV`
-- `pabs_MeV`
-- `cube_x_mm`
-- `cube_y_mm`
-- `cube_z_mm`
-- `edep_MeV`
-- `voxel_dominant_pdg`
-- `voxel_dominant_trackID`
-- `voxel_dominant_fraction`
-- `n_scint_photons`
-- `n_ionization_electrons`
-
-Each tree entry corresponds to one event. The vector branches are aligned element-by-element per nonzero voxel.
-
-## Build
-
-Requirements:
-
-- Geant4
-- ROOT
-- CMake
-- C++17 compiler
-
-Build commands:
+1. Configure and build.
 
 ```bash
 cmake -S . -B build
 cmake --build build -j 4
 ```
 
-## Run
-
-Run the default macro:
+2. Run with a macro.
 
 ```bash
 ./build/lar_muon_voxels run.mac
 ```
 
-If no macro is provided, the executable runs `run.mac` by default.
+If no macro is passed, the executable runs run.mac.
 
-## Files
+## Macro Configuration Reference
 
-- [CMakeLists.txt](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/CMakeLists.txt)
-- [run.mac](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/run.mac)
-- [src/main.cc](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/src/main.cc)
-- [src/DetectorConstruction.cc](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/src/DetectorConstruction.cc)
-- [src/PrimaryGeneratorAction.cc](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/src/PrimaryGeneratorAction.cc)
-- [src/EventAction.cc](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/src/EventAction.cc)
-- [src/SteppingAction.cc](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/src/SteppingAction.cc)
-- [src/RunAction.cc](/home/linyan/Dropbox/Documents/Playground/Geant4/G4test/src/RunAction.cc)
+### Run-level commands
+
+- /random/setSeeds <seed1> <seed2>
+  - Sets Geant4 random seeds for reproducibility.
+  - Example: /random/setSeeds 12345 67890
+
+- /toyG4/run/setOutputFile <path/to/output.root>
+  - Sets ROOT output file path/name.
+  - Accepts relative or absolute paths.
+  - Example: /toyG4/run/setOutputFile ./outputs/scan.root
+
+### Detector command
+
+- /toyG4/detector/setVoxelSize <size> <unit>
+  - Sets voxel size for deposition binning.
+  - Default is 5 mm.
+  - Example: /toyG4/detector/setVoxelSize 1 cm
+
+### Generator commands
+
+- /toyG4/generator/addPdgRange <pdg> <emin> <emax> <unit> [linear|log]
+- /toyG4/generator/clearPdgs
+- /toyG4/generator/listPdgs
+
+Notes:
+
+- Multiple entries per PDG are allowed.
+- Sampling mode defaults to linear if omitted.
+- If no PDG ranges are configured, the code restores a default mu- setup.
+
+## Recommended Command Order In Macros
+
+Use this order for clarity and reproducibility:
+
+1. /random/setSeeds ...
+2. /run/initialize
+3. /toyG4/run/setOutputFile ...
+4. /toyG4/detector/setVoxelSize ...
+5. /toyG4/generator/... configuration
+6. /run/beamOn ...
+
+The provided run macros follow this pattern.
+
+## Default Generator Behavior
+
+When no custom generator ranges are configured:
+
+- PDG: 13 (mu-)
+- Kinetic energy: uniform in [0.1, 10] GeV
+
+## Energy Deposition and Voxelization
+
+- Uses G4Step::GetTotalEnergyDeposit().
+- Counts only steps in active liquid argon.
+- Accumulates deposition into sparse 3D voxel bins.
+- Writes only non-zero voxels.
+- Voxel coordinates are saved as voxel-center positions in mm.
+
+## Derived LAr Quanta Model
+
+The code also derives approximate scintillation and ionization yields per voxel from deposited energy.
+
+Constants:
+
+- W = 23.6 eV
+- alpha = 0.21
+- r = 0.5
+
+Per voxel:
+
+- Nq = Edep / W
+- Ni = Nq / (1 + alpha)
+- Nex = Nq - Ni
+- Nphot = Nex + r * Ni
+- Nelec = (1 - r) * Ni
+
+This is a simplified yield model. It is not field-dependent recombination and does not model optical transport or electron drift.
+
+## Output File and Tree Schema
+
+Default output file:
+
+- lar_muon_voxels.root
+
+Tree:
+
+- events
+
+Branches:
+
+- event
+- pdgCode
+- energy_MeV
+- px_MeV
+- py_MeV
+- pz_MeV
+- pabs_MeV
+- cube_x_mm
+- cube_y_mm
+- cube_z_mm
+- edep_MeV
+- voxel_dominant_pdg
+- voxel_dominant_trackID
+- voxel_dominant_fraction
+- n_scint_photons
+- n_ionization_electrons
+
+Each entry is one event. Vector branches are index-aligned voxel-by-voxel.
+
+## Common Pitfalls
+
+- If /toyG4/run/setOutputFile points to a non-existent directory, ROOT file creation will fail.
+- If you need strict reproducibility, keep /random/setSeeds fixed and avoid changing event count or physics configuration.
+
+## Main Project Files
+
+- [run.mac](run.mac)
+- [run-multi-particle.mac](run-multi-particle.mac)
+- [include/RunAction.hh](include/RunAction.hh)
+- [include/RunActionMessenger.hh](include/RunActionMessenger.hh)
+- [src/RunAction.cc](src/RunAction.cc)
+- [src/RunActionMessenger.cc](src/RunActionMessenger.cc)
+- [src/PrimaryGeneratorAction.cc](src/PrimaryGeneratorAction.cc)
+- [src/PrimaryGeneratorMessenger.cc](src/PrimaryGeneratorMessenger.cc)
+- [src/DetectorMessenger.cc](src/DetectorMessenger.cc)
+- [CMakeLists.txt](CMakeLists.txt)

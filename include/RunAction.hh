@@ -8,6 +8,7 @@
 #ifndef RUNACTION_HH
 #define RUNACTION_HH
 
+#include "globals.hh"
 #include "G4UserRunAction.hh"
 
 #include <memory>
@@ -16,6 +17,7 @@
 class G4Run;
 class TFile;
 class TTree;
+class RunActionMessenger;
 
 struct EventRecord;
 
@@ -28,8 +30,12 @@ public:
   virtual void EndOfRunAction(const G4Run* run);
 
   void FillEvent(const EventRecord& record);
+  void SetOutputFileName(const G4String& fileName);
+  const G4String& GetOutputFileName() const;
 
 private:
+  G4String fOutputFileName;
+  RunActionMessenger* fMessenger;
   std::unique_ptr<TFile> fOutputFile;
   TTree* fTree;
 

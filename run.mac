@@ -1,26 +1,41 @@
-# Prompt:
-# Build a Geant4 project with a simple 20 meter radius world filled with liquid argon.
-# The whole world is active volume. Particle gun emits single energy muon of 0.1 - 10 GeV.
-# Physics list is QGSP_BERT and everything necessary for EM. Then record the energy deposition
-# in 5 mm cubes. Save output to a root file with format (evt no, muon momentum px, py, pz,
-# then a long vector of cube x, cube y, cube z, energy deposition in the cube).
+# Default ToyG4 run configuration.
+# Recommended order:
+# 1) Set random seeds
+# 2) Initialize run manager
+# 3) Set output file and detector/generator options
+# 4) Start beam
+
+# Optional: Set Geant4 RNG seeds for reproducible runs
+/random/setSeeds 12345 67890
 
 /run/initialize
+
+# Optional: Set output ROOT file (supports relative or absolute paths)
+/toyG4/run/setOutputFile ./lar_muon_voxels.root
 
 # Optional: Configure voxel size (default is 5 mm)
 /toyG4/detector/setVoxelSize 5 mm
 
 # Configure PDG-specific kinetic-energy ranges after initialization.
 /toyG4/generator/clearPdgs
-/toyG4/generator/addPdgRange 11   0.01 5 GeV
-/toyG4/generator/addPdgRange -11  0.01 5 GeV 
-/toyG4/generator/addPdgRange 13   0.1 10 GeV
-/toyG4/generator/addPdgRange -13  0.1 10 GeV  
-/toyG4/generator/addPdgRange 2212 0.2 5 GeV
-/toyG4/generator/addPdgRange 22   0.1 10 GeV 
-/toyG4/generator/addPdgRange 211  0.2 5 GeV 
-/toyG4/generator/addPdgRange -211 0.2 5 GeV
-/toyG4/generator/addPdgRange 2112 0.2 2 GeV                          
+/toyG4/generator/addPdgRange 11   0.01 10 GeV log
+/toyG4/generator/addPdgRange -11  0.01 10 GeV log
+/toyG4/generator/addPdgRange 13   0.01 10 GeV log
+/toyG4/generator/addPdgRange -13  0.01 10 GeV log
+/toyG4/generator/addPdgRange 2212 0.01 10 GeV log
+/toyG4/generator/addPdgRange 22   0.01 10 GeV log
+/toyG4/generator/addPdgRange 211  0.01 10 GeV log
+/toyG4/generator/addPdgRange -211 0.01 10 GeV log
+/toyG4/generator/addPdgRange 2112 0.01 10 GeV log
+/toyG4/generator/addPdgRange 11   0.05  2 GeV linear
+/toyG4/generator/addPdgRange -11  0.05  2 GeV linear
+/toyG4/generator/addPdgRange 13   0.02  2 GeV linear
+/toyG4/generator/addPdgRange -13  0.02  2 GeV linear
+/toyG4/generator/addPdgRange 2212 0.50  1 GeV linear
+/toyG4/generator/addPdgRange 22   0.01  1 GeV linear
+/toyG4/generator/addPdgRange 211  0.02  2 GeV linear
+/toyG4/generator/addPdgRange -211 0.02  2 GeV linear
+/toyG4/generator/addPdgRange 2112 0.50  1 GeV linear
 /toyG4/generator/listPdgs
 
-/run/beamOn 1000
+/run/beamOn 100000

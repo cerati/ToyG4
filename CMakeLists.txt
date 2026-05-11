@@ -32,6 +32,7 @@ set(SOURCES
   src/PrimaryGeneratorAction.cc
   src/PrimaryGeneratorMessenger.cc
   src/RunAction.cc
+  src/RunActionMessenger.cc
   src/SteppingAction.cc
   src/main.cc
 )
@@ -45,6 +46,7 @@ set(HEADERS
   include/PrimaryGeneratorAction.hh
   include/PrimaryGeneratorMessenger.hh
   include/RunAction.hh
+  include/RunActionMessenger.hh
   include/SteppingAction.hh
 )
 

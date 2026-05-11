@@ -8,15 +8,20 @@
 #include "RunAction.hh"
 
 #include "EventData.hh"
+#include "RunActionMessenger.hh"
 
+#include "G4Exception.hh"
 #include "G4Run.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4ios.hh"
 
 #include "TFile.h"
 #include "TTree.h"
 
 RunAction::RunAction()
   : G4UserRunAction(),
+    fOutputFileName("lar_muon_voxels.root"),
+    fMessenger(0),
     fOutputFile(),
     fTree(0),
     fEventNumber(-1),
@@ -35,13 +40,26 @@ RunAction::RunAction()
     fVoxelDominantFraction(),
     fScintPhotons(),
     fIonizationElectrons() {
+  fMessenger = new RunActionMessenger(this);
 }
 
 RunAction::~RunAction() {
+  delete fMessenger;
 }
 
 void RunAction::BeginOfRunAction(const G4Run*) {
-  fOutputFile.reset(TFile::Open("lar_muon_voxels.root", "RECREATE"));
+  fOutputFile.reset(TFile::Open(fOutputFileName, "RECREATE"));
+  if (!fOutputFile || fOutputFile->IsZombie()) {
+    G4ExceptionDescription description;
+    description << "Failed to create output ROOT file: " << fOutputFileName;
+    G4Exception("RunAction::BeginOfRunAction",
+                "ToyG4Run003",
+                FatalException,
+                description);
+    return;
+  }
+
+  G4cout << "[ToyG4] Writing output to: " << fOutputFileName << G4endl;
   fTree = new TTree("events", "Muon energy deposition in 5 mm cubes");
 
   fTree->Branch("event", &fEventNumber);
@@ -106,4 +124,13 @@ void RunAction::FillEvent(const EventRecord& record) {
   if (fTree) {
     fTree->Fill();
   }
+}
+
+void RunAction::SetOutputFileName(const G4String& fileName) {
+  fOutputFileName = fileName;
+  G4cout << "[ToyG4] Output file set to: " << fOutputFileName << G4endl;
+}
+
+const G4String& RunAction::GetOutputFileName() const {
+  return fOutputFileName;
 }
