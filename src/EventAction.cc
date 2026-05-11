@@ -30,7 +30,7 @@ EventAction::EventAction(RunAction* runAction)
     fRunAction(runAction),
     fRecord(),
     fVoxelMap(),
-    fContributorMap(),
+    fDominantContributorMap(),
     fVoxelSize(5.0 * mm),
     fMessenger(0) {
   fMessenger = new DetectorMessenger(this);
@@ -63,7 +63,7 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
   }
 
   fVoxelMap.clear();
-  fContributorMap.clear();
+  fDominantContributorMap.clear();
 }
 
 void EventAction::EndOfEventAction(const G4Event*) {
@@ -81,19 +81,15 @@ void EventAction::EndOfEventAction(const G4Event*) {
     fRecord.cubeZ.push_back((iz + 0.5) * fVoxelSize);
     fRecord.edep.push_back(totalEdep);
 
-    G4double maxContributorEdep = 0.;
+    DominantContributorMap::const_iterator domIt = fDominantContributorMap.find(voxelIdx);
     G4int dominantPdg = 0;
     G4int dominantTrackID = -1;
+    G4double maxContributorEdep = 0.;
 
-    for (ContributorMap::const_iterator contrib = fContributorMap.begin();
-         contrib != fContributorMap.end(); ++contrib) {
-      if (contrib->first.first == voxelIdx) {
-        if (contrib->second > maxContributorEdep) {
-          maxContributorEdep = contrib->second;
-          dominantPdg = contrib->first.second.first;
-          dominantTrackID = contrib->first.second.second;
-        }
-      }
+    if (domIt != fDominantContributorMap.end()) {
+      dominantPdg = domIt->second.pdgCode;
+      dominantTrackID = domIt->second.trackID;
+      maxContributorEdep = domIt->second.energy;
     }
 
     fRecord.voxelDominantPdg.push_back(dominantPdg);
@@ -123,8 +119,17 @@ void EventAction::AddEnergyDeposit(const G4ThreeVector& position, G4double edep,
   
   fVoxelMap[voxelIdx] += edep;
   
-  const std::pair<G4int, G4int> contributor(pdgCode, trackID);
-  fContributorMap[std::make_pair(voxelIdx, contributor)] += edep;
+  DominantContributorMap::iterator domIt = fDominantContributorMap.find(voxelIdx);
+  if (domIt == fDominantContributorMap.end()) {
+    fDominantContributorMap[voxelIdx] = ContributorInfo{pdgCode, trackID, edep};
+  } else {
+    const G4double prevEnergy = domIt->second.energy;
+    domIt->second.energy += edep;
+    if (edep > prevEnergy) {
+      domIt->second.pdgCode = pdgCode;
+      domIt->second.trackID = trackID;
+    }
+  }
 }
 
 void EventAction::SetVoxelSize(G4double size) {

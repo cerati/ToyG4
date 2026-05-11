@@ -39,7 +39,7 @@ private:
   RunAction* fRunAction;
   EventRecord fRecord;
   VoxelMap fVoxelMap;
-  ContributorMap fContributorMap;
+  DominantContributorMap fDominantContributorMap;
   G4double fVoxelSize;
   DetectorMessenger* fMessenger;
 };

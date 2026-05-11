@@ -41,6 +41,6 @@ struct EventRecord {
 
 typedef std::tuple<G4int, G4int, G4int> VoxelIndex;
 typedef std::map<VoxelIndex, G4double> VoxelMap;
-typedef std::map<std::pair<VoxelIndex, std::pair<G4int, G4int>>, G4double> ContributorMap;
+typedef std::map<VoxelIndex, ContributorInfo> DominantContributorMap;
 
 #endif
