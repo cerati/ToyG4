@@ -11,7 +11,7 @@
 #include "globals.hh"
 #include "G4VUserPrimaryGeneratorAction.hh"
 
-#include <map>
+#include <vector>
 
 class EventAction;
 class G4Event;
@@ -20,9 +20,13 @@ class PrimaryGeneratorMessenger;
 
 class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction {
 public:
-  struct EnergyRange {
+  enum SamplingMode { kLinear, kLog };
+
+  struct EnergyConfig {
+    G4int pdgCode;
     G4double minEnergy;
     G4double maxEnergy;
+    SamplingMode mode;
   };
 
   explicit PrimaryGeneratorAction(EventAction* eventAction);
@@ -30,7 +34,8 @@ public:
 
   virtual void GeneratePrimaries(G4Event* event);
 
-  void SetEnergyRangeForPdg(G4int pdgCode, G4double minEnergy, G4double maxEnergy);
+  void SetEnergyRangeForPdg(G4int pdgCode, G4double minEnergy, G4double maxEnergy,
+                             SamplingMode mode = kLinear);
   void ClearConfiguredPdgs();
   void PrintConfiguration() const;
 
@@ -39,7 +44,7 @@ private:
 
   EventAction* fEventAction;
   G4ParticleGun* fParticleGun;
-  std::map<G4int, EnergyRange> fPdgEnergyRanges;
+  std::vector<EnergyConfig> fPdgEntries;
   PrimaryGeneratorMessenger* fMessenger;
 };
 

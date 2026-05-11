@@ -31,8 +31,10 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gen
   fGeneratorDirectory->SetGuidance("Primary generator configuration.");
 
   fAddPdgRangeCmd = new G4UIcommand("/toyG4/generator/addPdgRange", this);
-  fAddPdgRangeCmd->SetGuidance("Set kinetic-energy range for one PDG code.");
-  fAddPdgRangeCmd->SetGuidance("Usage: /toyG4/generator/addPdgRange <pdg> <emin> <emax> <unit>");
+  fAddPdgRangeCmd->SetGuidance("Add a kinetic-energy range for one PDG code.");
+  fAddPdgRangeCmd->SetGuidance("Usage: /toyG4/generator/addPdgRange <pdg> <emin> <emax> <unit> [linear|log]");
+  fAddPdgRangeCmd->SetGuidance("Multiple entries for the same PDG are allowed.");
+  fAddPdgRangeCmd->SetGuidance("Sampling mode is optional and defaults to 'linear'.");
 
   G4UIparameter* pdgParam = new G4UIparameter("pdg", 'i', false);
   pdgParam->SetGuidance("PDG code (e.g. 13, -13, 11, 2212).");
@@ -49,6 +51,11 @@ PrimaryGeneratorMessenger::PrimaryGeneratorMessenger(PrimaryGeneratorAction* gen
   G4UIparameter* unitParam = new G4UIparameter("unit", 's', false);
   unitParam->SetGuidance("Energy unit, e.g. MeV or GeV.");
   fAddPdgRangeCmd->SetParameter(unitParam);
+
+  G4UIparameter* modeParam = new G4UIparameter("mode", 's', true);
+  modeParam->SetGuidance("Sampling mode: 'linear' (default) or 'log'.");
+  modeParam->SetDefaultValue("linear");
+  fAddPdgRangeCmd->SetParameter(modeParam);
 
   fAddPdgRangeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
@@ -75,15 +82,19 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
     G4double emin = 0.;
     G4double emax = 0.;
     G4String unit;
+    G4String modeStr = "linear";
     input >> pdg >> emin >> emax >> unit;
 
     if (!input || unit.empty()) {
       G4Exception("PrimaryGeneratorMessenger::SetNewValue",
                   "ToyG4Gen001",
                   JustWarning,
-                  "Invalid addPdgRange syntax. Use: <pdg> <emin> <emax> <unit>");
+                  "Invalid addPdgRange syntax. Use: <pdg> <emin> <emax> <unit> [linear|log]");
       return;
     }
+
+    // mode is optional; ignore stream failure if absent
+    input >> modeStr;
 
     const G4double unitScale = G4UIcommand::ValueOf(unit);
     if (unitScale <= 0.) {
@@ -94,7 +105,10 @@ void PrimaryGeneratorMessenger::SetNewValue(G4UIcommand* command, G4String newVa
       return;
     }
 
-    fGeneratorAction->SetEnergyRangeForPdg(pdg, emin * unitScale, emax * unitScale);
+    fGeneratorAction->SetEnergyRangeForPdg(pdg, emin * unitScale, emax * unitScale,
+                                            modeStr == "log"
+                                              ? PrimaryGeneratorAction::kLog
+                                              : PrimaryGeneratorAction::kLinear);
     return;
   }
 

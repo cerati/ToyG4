@@ -28,7 +28,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(EventAction* eventAction)
   : G4VUserPrimaryGeneratorAction(),
     fEventAction(eventAction),
     fParticleGun(new G4ParticleGun(1)),
-    fPdgEnergyRanges(),
+    fPdgEntries(),
     fMessenger(0) {
   G4ParticleDefinition* particle = G4MuonMinus::MuonMinusDefinition();
   fParticleGun->SetParticleDefinition(particle);
@@ -45,17 +45,16 @@ PrimaryGeneratorAction::~PrimaryGeneratorAction() {
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
   EnsureDefaultConfiguration();
 
-  const std::size_t rangeCount = fPdgEnergyRanges.size();
-  std::size_t selectedIndex = static_cast<std::size_t>(G4UniformRand() * rangeCount);
-  if (selectedIndex >= rangeCount) {
-    selectedIndex = rangeCount - 1;
+  const std::size_t entryCount = fPdgEntries.size();
+  std::size_t selectedIndex = static_cast<std::size_t>(G4UniformRand() * entryCount);
+  if (selectedIndex >= entryCount) {
+    selectedIndex = entryCount - 1;
   }
 
-  std::map<G4int, EnergyRange>::const_iterator selected = fPdgEnergyRanges.begin();
-  std::advance(selected, selectedIndex);
+  const EnergyConfig& selected = fPdgEntries[selectedIndex];
 
   G4ParticleDefinition* particle =
-      G4ParticleTable::GetParticleTable()->FindParticle(selected->first);
+      G4ParticleTable::GetParticleTable()->FindParticle(selected.pdgCode);
   if (!particle) {
     G4Exception("PrimaryGeneratorAction::GeneratePrimaries",
                 "ToyG4Gen010",
@@ -66,9 +65,14 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
 
   fParticleGun->SetParticleDefinition(particle);
 
-  const G4double minEnergy = selected->second.minEnergy;
-  const G4double maxEnergy = selected->second.maxEnergy;
-  const G4double kineticEnergy = minEnergy + G4UniformRand() * (maxEnergy - minEnergy);
+  const G4double minEnergy = selected.minEnergy;
+  const G4double maxEnergy = selected.maxEnergy;
+  G4double kineticEnergy;
+  if (selected.mode == kLog) {
+    kineticEnergy = minEnergy * std::pow(maxEnergy / minEnergy, G4UniformRand());
+  } else {
+    kineticEnergy = minEnergy + G4UniformRand() * (maxEnergy - minEnergy);
+  }
   const G4ThreeVector direction = G4RandomDirection();
 
   fParticleGun->SetParticleEnergy(kineticEnergy);
@@ -87,7 +91,8 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
 
 void PrimaryGeneratorAction::SetEnergyRangeForPdg(G4int pdgCode,
                                                   G4double minEnergy,
-                                                  G4double maxEnergy) {
+                                                  G4double maxEnergy,
+                                                  SamplingMode mode) {
   G4ParticleDefinition* particle = G4ParticleTable::GetParticleTable()->FindParticle(pdgCode);
   if (!particle) {
     G4Exception("PrimaryGeneratorAction::SetEnergyRangeForPdg",
@@ -105,39 +110,41 @@ void PrimaryGeneratorAction::SetEnergyRangeForPdg(G4int pdgCode,
     return;
   }
 
-  fPdgEnergyRanges[pdgCode] = EnergyRange{minEnergy, maxEnergy};
+  fPdgEntries.push_back(EnergyConfig{pdgCode, minEnergy, maxEnergy, mode});
 
-  G4cout << "[ToyG4] Configured PDG " << pdgCode
+  G4cout << "[ToyG4] Added PDG " << pdgCode
          << " (" << particle->GetParticleName() << ")"
          << " with kinetic energy range [" << minEnergy / GeV << ", "
-         << maxEnergy / GeV << "] GeV" << G4endl;
+         << maxEnergy / GeV << "] GeV"
+         << " (sampling: " << (mode == kLog ? "log" : "linear") << ")" << G4endl;
 }
 
 void PrimaryGeneratorAction::ClearConfiguredPdgs() {
-  fPdgEnergyRanges.clear();
+  fPdgEntries.clear();
   G4cout << "[ToyG4] Cleared all configured PDG ranges." << G4endl;
 }
 
 void PrimaryGeneratorAction::PrintConfiguration() const {
-  if (fPdgEnergyRanges.empty()) {
+  if (fPdgEntries.empty()) {
     G4cout << "[ToyG4] No PDG ranges configured. Default will be restored at generation time." << G4endl;
     return;
   }
 
-  G4cout << "[ToyG4] Configured PDG ranges:" << G4endl;
-  for (std::map<G4int, EnergyRange>::const_iterator it = fPdgEnergyRanges.begin();
-       it != fPdgEnergyRanges.end();
+  G4cout << "[ToyG4] Configured PDG entries (" << fPdgEntries.size() << "):" << G4endl;
+  for (std::vector<EnergyConfig>::const_iterator it = fPdgEntries.begin();
+       it != fPdgEntries.end();
        ++it) {
-    G4ParticleDefinition* particle = G4ParticleTable::GetParticleTable()->FindParticle(it->first);
+    G4ParticleDefinition* particle = G4ParticleTable::GetParticleTable()->FindParticle(it->pdgCode);
     const G4String particleName = particle ? particle->GetParticleName() : "<unknown>";
-    G4cout << "  PDG " << it->first << " (" << particleName << "): ["
-           << it->second.minEnergy / GeV << ", "
-           << it->second.maxEnergy / GeV << "] GeV" << G4endl;
+    G4cout << "  PDG " << it->pdgCode << " (" << particleName << "): ["
+           << it->minEnergy / GeV << ", "
+           << it->maxEnergy / GeV << "] GeV"
+           << " [" << (it->mode == kLog ? "log" : "linear") << "]" << G4endl;
   }
 }
 
 void PrimaryGeneratorAction::EnsureDefaultConfiguration() {
-  if (!fPdgEnergyRanges.empty()) {
+  if (!fPdgEntries.empty()) {
     return;
   }
 
