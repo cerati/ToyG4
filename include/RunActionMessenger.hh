@@ -19,6 +19,7 @@ private:
   RunAction* fRunAction;
   G4UIdirectory* fRunDirectory;
   G4UIcmdWithAString* fSetOutputFileCmd;
+  G4UIcmdWithAString* fSetOutputFormatCmd;
 };
 
 #endif

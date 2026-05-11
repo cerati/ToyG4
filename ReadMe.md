@@ -18,6 +18,25 @@ cmake -S . -B build
 cmake --build build -j 4
 ```
 
+Enable HDF5 output support (optional):
+
+```bash
+cmake -S . -B build -DTOYG4_ENABLE_HDF5=ON
+cmake --build build -j 4
+```
+
+Note: this project uses the HDF5 C library target from hdf5-config.cmake.
+
+On SL7/CVMFS, this explicit command is known to work:
+
+```bash
+rm -rf build
+cmake -S . -B build \
+  -DTOYG4_ENABLE_HDF5=ON \
+  -DHDF5_DIR=/cvmfs/larsoft.opensciencegrid.org/products/hdf5/v1_12_2a/Linux64bit+3.10-2.17-e26-prof/cmake
+cmake --build build -j 4
+```
+
 2. Run with a macro.
 
 ```bash
@@ -34,8 +53,13 @@ If no macro is passed, the executable runs run.mac.
   - Sets Geant4 random seeds for reproducibility.
   - Example: /random/setSeeds 12345 67890
 
+- /toyG4/run/setOutputFormat <root|hdf5>
+  - Selects the output format.
+  - Default is root.
+  - Example: /toyG4/run/setOutputFormat hdf5
+
 - /toyG4/run/setOutputFile <path/to/output.root>
-  - Sets ROOT output file path/name.
+  - Sets output file path/name.
   - Accepts relative or absolute paths.
   - Example: /toyG4/run/setOutputFile ./outputs/scan.root
 
@@ -64,10 +88,11 @@ Use this order for clarity and reproducibility:
 
 1. /random/setSeeds ...
 2. /run/initialize
-3. /toyG4/run/setOutputFile ...
-4. /toyG4/detector/setVoxelSize ...
-5. /toyG4/generator/... configuration
-6. /run/beamOn ...
+3. /toyG4/run/setOutputFormat ...
+4. /toyG4/run/setOutputFile ...
+5. /toyG4/detector/setVoxelSize ...
+6. /toyG4/generator/... configuration
+7. /run/beamOn ...
 
 The provided run macros follow this pattern.
 
@@ -137,10 +162,24 @@ Branches:
 
 Each entry is one event. Vector branches are index-aligned voxel-by-voxel.
 
+HDF5 mode (set /toyG4/run/setOutputFormat hdf5) writes a reduced schema:
+
+- pdgCode (1D int, one value per event)
+- energy_MeV (1D double, one value per event)
+- edep_MeV_flat (1D double, flattened voxel edep values for all events)
+- edep_offsets (1D uint64, length = nEvents + 1)
+
+For event i, voxel edep values are:
+
+- edep_MeV_flat[edep_offsets[i] : edep_offsets[i+1]]
+
 ## Common Pitfalls
 
 - If /toyG4/run/setOutputFile points to a non-existent directory, ROOT file creation will fail.
 - If you need strict reproducibility, keep /random/setSeeds fixed and avoid changing event count or physics configuration.
+- HDF5 output requires configuring with -DTOYG4_ENABLE_HDF5=ON and having an HDF5 CMake config package that exports target hdf5-shared.
+- If you switch between HDF5-enabled and non-HDF5 builds, reconfigure from a clean build directory.
+- Requesting /toyG4/run/setOutputFormat hdf5 without HDF5 build support now stops with a fatal error.
 
 ## Main Project Files
 

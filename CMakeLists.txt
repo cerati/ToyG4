@@ -11,14 +11,28 @@ project(LArMuonVoxelScan)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(TOYG4_ENABLE_HDF5 "Enable HDF5 output support" OFF)
+
 find_package(Geant4 REQUIRED)
 find_package(ROOT REQUIRED COMPONENTS Core RIO Tree)
+
+set(TOYG4_USE_HDF5 OFF)
+if(TOYG4_ENABLE_HDF5)
+  find_package(HDF5 CONFIG REQUIRED)
+  if(NOT TARGET hdf5-shared)
+    message(FATAL_ERROR "HDF5 found, but target 'hdf5-shared' is unavailable. Set HDF5_DIR to your hdf5-config.cmake path.")
+  endif()
+  set(TOYG4_USE_HDF5 ON)
+endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${Geant4_INCLUDE_DIRS})
 include_directories(${ROOT_INCLUDE_DIRS})
 
 add_definitions(${Geant4_DEFINITIONS})
+if(TOYG4_USE_HDF5)
+  add_definitions(-DTOYG4_USE_HDF5)
+endif()
 
 set(GEANT4_BATCH_LIBRARIES ${Geant4_LIBRARIES})
 list(FILTER GEANT4_BATCH_LIBRARIES EXCLUDE REGEX "Qt")
@@ -58,3 +72,7 @@ target_link_libraries(
   ROOT::RIO
   ROOT::Tree
 )
+
+if(TOYG4_USE_HDF5)
+  target_link_libraries(lar_muon_voxels hdf5-shared)
+endif()

@@ -11,17 +11,25 @@ RunActionMessenger::RunActionMessenger(RunAction* runAction)
   : G4UImessenger(),
     fRunAction(runAction),
     fRunDirectory(0),
-    fSetOutputFileCmd(0) {
+    fSetOutputFileCmd(0),
+    fSetOutputFormatCmd(0) {
   fRunDirectory = new G4UIdirectory("/toyG4/run/");
   fRunDirectory->SetGuidance("Run-level configuration.");
 
   fSetOutputFileCmd = new G4UIcmdWithAString("/toyG4/run/setOutputFile", this);
-  fSetOutputFileCmd->SetGuidance("Set ROOT output file path/name.");
+  fSetOutputFileCmd->SetGuidance("Set output file path/name.");
   fSetOutputFileCmd->SetParameterName("filePath", false);
   fSetOutputFileCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+
+  fSetOutputFormatCmd = new G4UIcmdWithAString("/toyG4/run/setOutputFormat", this);
+  fSetOutputFormatCmd->SetGuidance("Set output format: root or hdf5.");
+  fSetOutputFormatCmd->SetParameterName("format", false);
+  fSetOutputFormatCmd->SetDefaultValue("root");
+  fSetOutputFormatCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 }
 
 RunActionMessenger::~RunActionMessenger() {
+  delete fSetOutputFormatCmd;
   delete fSetOutputFileCmd;
   delete fRunDirectory;
 }
@@ -37,6 +45,11 @@ void RunActionMessenger::SetNewValue(G4UIcommand* command, G4String newValue) {
     }
 
     fRunAction->SetOutputFileName(newValue);
+    return;
+  }
+
+  if (command == fSetOutputFormatCmd) {
+    fRunAction->SetOutputFormat(newValue);
     return;
   }
 

@@ -11,6 +11,7 @@
 #include "globals.hh"
 #include "G4UserRunAction.hh"
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -32,12 +33,22 @@ public:
   void FillEvent(const EventRecord& record);
   void SetOutputFileName(const G4String& fileName);
   const G4String& GetOutputFileName() const;
+  void SetOutputFormat(const G4String& format);
+  const G4String& GetOutputFormat() const;
 
 private:
   G4String fOutputFileName;
+  G4String fOutputFormat;
   RunActionMessenger* fMessenger;
   std::unique_ptr<TFile> fOutputFile;
   TTree* fTree;
+
+  std::vector<int> fH5PdgCode;
+  std::vector<double> fH5Energy;
+  std::vector<double> fH5EdepFlat;
+  std::vector<std::uint64_t> fH5EdepOffsets;
+
+  void WriteHdf5Output();
 
   int fEventNumber;
   int fPdgCode;
