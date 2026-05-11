@@ -27,6 +27,7 @@ list(FILTER GEANT4_BATCH_LIBRARIES EXCLUDE REGEX "G4(OpenGL|gl2ps|FR|GMocren|vis
 set(SOURCES
   src/ActionInitialization.cc
   src/DetectorConstruction.cc
+  src/DetectorMessenger.cc
   src/EventAction.cc
   src/PrimaryGeneratorAction.cc
   src/PrimaryGeneratorMessenger.cc
@@ -38,6 +39,7 @@ set(SOURCES
 set(HEADERS
   include/ActionInitialization.hh
   include/DetectorConstruction.hh
+  include/DetectorMessenger.hh
   include/EventAction.hh
   include/EventData.hh
   include/PrimaryGeneratorAction.hh

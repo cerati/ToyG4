@@ -2,6 +2,13 @@
 
 This project builds a minimal Geant4 application for single-muon energy deposition in liquid argon and writes sparse voxelized output to a ROOT file.
 
+## Voxelization
+
+- Default voxel size: `5 mm`
+- Configurable via macro command (after `/run/initialize`):
+  - `/toyG4/detector/setVoxelSize <size> <unit>`
+- Example: `/toyG4/detector/setVoxelSize 1 cm`
+
 ## Geometry
 
 - Active volume: liquid argon sphere with radius `20 m`

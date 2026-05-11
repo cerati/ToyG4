@@ -8,8 +8,11 @@
 #include "EventAction.hh"
 
 #include "RunAction.hh"
+#include "DetectorMessenger.hh"
 
 #include "G4Event.hh"
+#include "G4Exception.hh"
+#include "G4ios.hh"
 #include "G4PrimaryParticle.hh"
 #include "G4PrimaryVertex.hh"
 #include "G4SystemOfUnits.hh"
@@ -17,7 +20,6 @@
 #include <cmath>
 
 namespace {
-  const G4double kVoxelSize = 5.0 * mm;
   const G4double kLArWValue = 23.6 * eV;
   const G4double kExcitonToIonRatio = 0.21;
   const G4double kRecombinationFraction = 0.5;
@@ -27,10 +29,15 @@ EventAction::EventAction(RunAction* runAction)
   : G4UserEventAction(),
     fRunAction(runAction),
     fRecord(),
-    fVoxelMap() {
+    fVoxelMap(),
+    fContributorMap(),
+    fVoxelSize(5.0 * mm),
+    fMessenger(0) {
+  fMessenger = new DetectorMessenger(this);
 }
 
 EventAction::~EventAction() {
+  delete fMessenger;
 }
 
 void EventAction::BeginOfEventAction(const G4Event* event) {
@@ -69,9 +76,9 @@ void EventAction::EndOfEventAction(const G4Event*) {
     const G4int iy = std::get<1>(voxelIdx);
     const G4int iz = std::get<2>(voxelIdx);
 
-    fRecord.cubeX.push_back((ix + 0.5) * kVoxelSize);
-    fRecord.cubeY.push_back((iy + 0.5) * kVoxelSize);
-    fRecord.cubeZ.push_back((iz + 0.5) * kVoxelSize);
+    fRecord.cubeX.push_back((ix + 0.5) * fVoxelSize);
+    fRecord.cubeY.push_back((iy + 0.5) * fVoxelSize);
+    fRecord.cubeZ.push_back((iz + 0.5) * fVoxelSize);
     fRecord.edep.push_back(totalEdep);
 
     G4double maxContributorEdep = 0.;
@@ -109,15 +116,27 @@ void EventAction::EndOfEventAction(const G4Event*) {
 
 void EventAction::AddEnergyDeposit(const G4ThreeVector& position, G4double edep,
                                    G4int pdgCode, G4int trackID) {
-  const G4int ix = static_cast<G4int>(std::floor(position.x() / kVoxelSize));
-  const G4int iy = static_cast<G4int>(std::floor(position.y() / kVoxelSize));
-  const G4int iz = static_cast<G4int>(std::floor(position.z() / kVoxelSize));
+  const G4int ix = static_cast<G4int>(std::floor(position.x() / fVoxelSize));
+  const G4int iy = static_cast<G4int>(std::floor(position.y() / fVoxelSize));
+  const G4int iz = static_cast<G4int>(std::floor(position.z() / fVoxelSize));
   const VoxelIndex voxelIdx(ix, iy, iz);
   
   fVoxelMap[voxelIdx] += edep;
   
   const std::pair<G4int, G4int> contributor(pdgCode, trackID);
   fContributorMap[std::make_pair(voxelIdx, contributor)] += edep;
+}
+
+void EventAction::SetVoxelSize(G4double size) {
+  if (size <= 0.) {
+    G4Exception("EventAction::SetVoxelSize",
+                "ToyG4Det001",
+                JustWarning,
+                "Voxel size must be positive. Ignoring invalid value.");
+    return;
+  }
+  fVoxelSize = size;
+  G4cout << "[ToyG4] Voxel size set to " << fVoxelSize / mm << " mm" << G4endl;
 }
 
 void EventAction::SetPrimaryParticleInfo(const G4ThreeVector& momentum,

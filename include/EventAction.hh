@@ -11,9 +11,11 @@
 #include "EventData.hh"
 #include "G4UserEventAction.hh"
 #include "G4ThreeVector.hh"
+#include "G4SystemOfUnits.hh"
 
 class G4Event;
 class RunAction;
+class DetectorMessenger;
 
 class EventAction : public G4UserEventAction {
 public:
@@ -30,11 +32,16 @@ public:
                               G4double momentumAbs,
                               G4int pdgCode);
 
+  void SetVoxelSize(G4double size);
+  G4double GetVoxelSize() const { return fVoxelSize; }
+
 private:
   RunAction* fRunAction;
   EventRecord fRecord;
   VoxelMap fVoxelMap;
   ContributorMap fContributorMap;
+  G4double fVoxelSize;
+  DetectorMessenger* fMessenger;
 };
 
 #endif
