@@ -8,22 +8,39 @@
 #ifndef PRIMARYGENERATORACTION_HH
 #define PRIMARYGENERATORACTION_HH
 
+#include "globals.hh"
 #include "G4VUserPrimaryGeneratorAction.hh"
+
+#include <map>
 
 class EventAction;
 class G4Event;
 class G4ParticleGun;
+class PrimaryGeneratorMessenger;
 
 class PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction {
 public:
+  struct EnergyRange {
+    G4double minEnergy;
+    G4double maxEnergy;
+  };
+
   explicit PrimaryGeneratorAction(EventAction* eventAction);
   virtual ~PrimaryGeneratorAction();
 
   virtual void GeneratePrimaries(G4Event* event);
 
+  void SetEnergyRangeForPdg(G4int pdgCode, G4double minEnergy, G4double maxEnergy);
+  void ClearConfiguredPdgs();
+  void PrintConfiguration() const;
+
 private:
+  void EnsureDefaultConfiguration();
+
   EventAction* fEventAction;
   G4ParticleGun* fParticleGun;
+  std::map<G4int, EnergyRange> fPdgEnergyRanges;
+  PrimaryGeneratorMessenger* fMessenger;
 };
 
 #endif

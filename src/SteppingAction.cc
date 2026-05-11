@@ -14,6 +14,7 @@
 #include "G4Step.hh"
 #include "G4StepPoint.hh"
 #include "G4TouchableHandle.hh"
+#include "G4Track.hh"
 #include "G4VPhysicalVolume.hh"
 
 SteppingAction::SteppingAction(const DetectorConstruction* detector, EventAction* eventAction)
@@ -43,5 +44,10 @@ void SteppingAction::UserSteppingAction(const G4Step* step) {
 
   const G4ThreeVector midpoint =
     0.5 * (step->GetPreStepPoint()->GetPosition() + step->GetPostStepPoint()->GetPosition());
-  fEventAction->AddEnergyDeposit(midpoint, edep);
+  
+  const G4Track* track = step->GetTrack();
+  const G4int pdgCode = track->GetDefinition()->GetPDGEncoding();
+  const G4int trackID = track->GetTrackID();
+  
+  fEventAction->AddEnergyDeposit(midpoint, edep, pdgCode, trackID);
 }

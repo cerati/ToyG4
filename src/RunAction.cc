@@ -30,6 +30,9 @@ RunAction::RunAction()
     fCubeY(),
     fCubeZ(),
     fEdep(),
+    fVoxelDominantPdg(),
+    fVoxelDominantTrackID(),
+    fVoxelDominantFraction(),
     fScintPhotons(),
     fIonizationElectrons() {
 }
@@ -52,6 +55,9 @@ void RunAction::BeginOfRunAction(const G4Run*) {
   fTree->Branch("cube_y_mm", &fCubeY);
   fTree->Branch("cube_z_mm", &fCubeZ);
   fTree->Branch("edep_MeV", &fEdep);
+  fTree->Branch("voxel_dominant_pdg", &fVoxelDominantPdg);
+  fTree->Branch("voxel_dominant_trackID", &fVoxelDominantTrackID);
+  fTree->Branch("voxel_dominant_fraction", &fVoxelDominantFraction);
   fTree->Branch("n_scint_photons", &fScintPhotons);
   fTree->Branch("n_ionization_electrons", &fIonizationElectrons);
 }
@@ -83,6 +89,9 @@ void RunAction::FillEvent(const EventRecord& record) {
   fCubeY.assign(record.cubeY.begin(), record.cubeY.end());
   fCubeZ.assign(record.cubeZ.begin(), record.cubeZ.end());
   fEdep.assign(record.edep.begin(), record.edep.end());
+  fVoxelDominantPdg.assign(record.voxelDominantPdg.begin(), record.voxelDominantPdg.end());
+  fVoxelDominantTrackID.assign(record.voxelDominantTrackID.begin(), record.voxelDominantTrackID.end());
+  fVoxelDominantFraction.assign(record.voxelDominantFraction.begin(), record.voxelDominantFraction.end());
   fScintPhotons.assign(record.scintPhotons.begin(), record.scintPhotons.end());
   fIonizationElectrons.assign(record.ionizationElectrons.begin(),
                               record.ionizationElectrons.end());

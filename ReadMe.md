@@ -10,11 +10,32 @@ This project builds a minimal Geant4 application for single-muon energy depositi
 
 ## Primary Particle
 
-- Particle: `mu-`
 - One particle per event
-- Kinetic energy sampled uniformly in `[0.1, 10] GeV`
 - Initial position: origin
 - Initial direction: isotropic
+
+Default configuration (same as original behavior):
+
+- PDG `13` (`mu-`)
+- Kinetic energy sampled uniformly in `[0.1, 10] GeV`
+
+Generator is configurable by PDG code with a separate kinetic-energy range for each PDG.
+At each event, one configured PDG entry is selected uniformly, then kinetic energy is sampled
+uniformly in that PDG-specific range.
+
+Macro commands:
+
+- `/toyG4/generator/addPdgRange <pdg> <emin> <emax> <unit>`
+- `/toyG4/generator/clearPdgs`
+- `/toyG4/generator/listPdgs`
+
+Use these commands after `/run/initialize` in batch macros.
+
+Examples:
+
+- `/toyG4/generator/addPdgRange 13 0.1 10 GeV`
+- `/toyG4/generator/addPdgRange -13 0.1 10 GeV`
+- `/toyG4/generator/addPdgRange 2212 0.2 5 GeV`
 
 ## Physics
 
@@ -65,13 +86,19 @@ ROOT tree:
 Branches:
 
 - `event`
+- `pdgCode`
+- `energy_MeV`
 - `px_MeV`
 - `py_MeV`
 - `pz_MeV`
+- `pabs_MeV`
 - `cube_x_mm`
 - `cube_y_mm`
 - `cube_z_mm`
 - `edep_MeV`
+- `voxel_dominant_pdg`
+- `voxel_dominant_trackID`
+- `voxel_dominant_fraction`
 - `n_scint_photons`
 - `n_ionization_electrons`
 

@@ -5,5 +5,10 @@
 # in 5 mm cubes. Save output to a root file with format (evt no, muon momentum px, py, pz,
 # then a long vector of cube x, cube y, cube z, energy deposition in the cube).
 
+# Optional examples for configurable generator:
+# /toyG4/generator/addPdgRange 13 0.1 10 GeV
+# /toyG4/generator/addPdgRange 2212 0.2 5 GeV
+# /toyG4/generator/listPdgs
+
 /run/initialize
 /run/beamOn 10

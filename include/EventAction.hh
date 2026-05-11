@@ -23,7 +23,8 @@ public:
   virtual void BeginOfEventAction(const G4Event* event);
   virtual void EndOfEventAction(const G4Event* event);
 
-  void AddEnergyDeposit(const G4ThreeVector& position, G4double edep);
+  void AddEnergyDeposit(const G4ThreeVector& position, G4double edep,
+                        G4int pdgCode, G4int trackID);
   void SetPrimaryParticleInfo(const G4ThreeVector& momentum,
                               G4double energy,
                               G4double momentumAbs,
@@ -33,6 +34,7 @@ private:
   RunAction* fRunAction;
   EventRecord fRecord;
   VoxelMap fVoxelMap;
+  ContributorMap fContributorMap;
 };
 
 #endif

@@ -14,6 +14,12 @@
 #include <tuple>
 #include <vector>
 
+struct ContributorInfo {
+  G4int pdgCode = 0;
+  G4int trackID = -1;
+  G4double energy = 0.;
+};
+
 struct EventRecord {
   G4int eventNumber = -1;
   G4int pdgCode = 0;
@@ -26,11 +32,15 @@ struct EventRecord {
   std::vector<G4double> cubeY;
   std::vector<G4double> cubeZ;
   std::vector<G4double> edep;
+  std::vector<G4int> voxelDominantPdg;
+  std::vector<G4int> voxelDominantTrackID;
+  std::vector<G4double> voxelDominantFraction;
   std::vector<G4double> scintPhotons;
   std::vector<G4double> ionizationElectrons;
 };
 
 typedef std::tuple<G4int, G4int, G4int> VoxelIndex;
 typedef std::map<VoxelIndex, G4double> VoxelMap;
+typedef std::map<std::pair<VoxelIndex, std::pair<G4int, G4int>>, G4double> ContributorMap;
 
 #endif

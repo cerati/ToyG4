@@ -29,6 +29,7 @@ set(SOURCES
   src/DetectorConstruction.cc
   src/EventAction.cc
   src/PrimaryGeneratorAction.cc
+  src/PrimaryGeneratorMessenger.cc
   src/RunAction.cc
   src/SteppingAction.cc
   src/main.cc
@@ -40,6 +41,7 @@ set(HEADERS
   include/EventAction.hh
   include/EventData.hh
   include/PrimaryGeneratorAction.hh
+  include/PrimaryGeneratorMessenger.hh
   include/RunAction.hh
   include/SteppingAction.hh
 )

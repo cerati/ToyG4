@@ -44,6 +44,9 @@ private:
   std::vector<double> fCubeY;
   std::vector<double> fCubeZ;
   std::vector<double> fEdep;
+  std::vector<int> fVoxelDominantPdg;
+  std::vector<int> fVoxelDominantTrackID;
+  std::vector<double> fVoxelDominantFraction;
   std::vector<double> fScintPhotons;
   std::vector<double> fIonizationElectrons;
 };
