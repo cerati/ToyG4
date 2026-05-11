@@ -33,6 +33,7 @@ PrimaryGeneratorAction::~PrimaryGeneratorAction() {
 }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
+  G4ParticleDefinition* particle = fParticleGun->GetParticleDefinition();
   const G4double minEnergy = 0.1 * GeV;
   const G4double maxEnergy = 10.0 * GeV;
   const G4double kineticEnergy = minEnergy + G4UniformRand() * (maxEnergy - minEnergy);
@@ -41,10 +42,13 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
   fParticleGun->SetParticleEnergy(kineticEnergy);
   fParticleGun->SetParticleMomentumDirection(direction);
 
-  const G4double totalEnergy = kineticEnergy + G4MuonMinus::MuonMinusDefinition()->GetPDGMass();
-  const G4double mass = G4MuonMinus::MuonMinusDefinition()->GetPDGMass();
+  const G4double mass = particle->GetPDGMass();
+  const G4double totalEnergy = kineticEnergy + mass;
   const G4double momentumMagnitude = std::sqrt(totalEnergy * totalEnergy - mass * mass);
-  fEventAction->SetPrimaryMomentum(momentumMagnitude * direction);
+  fEventAction->SetPrimaryParticleInfo(momentumMagnitude * direction,
+                                       kineticEnergy,
+                                       momentumMagnitude,
+                                       particle->GetPDGEncoding());
 
   fParticleGun->GeneratePrimaryVertex(event);
 }

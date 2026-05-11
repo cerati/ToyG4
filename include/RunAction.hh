@@ -34,9 +34,12 @@ private:
   TTree* fTree;
 
   int fEventNumber;
+  int fPdgCode;
   double fPx;
   double fPy;
   double fPz;
+  double fEnergy;
+  double fMomentumAbs;
   std::vector<double> fCubeX;
   std::vector<double> fCubeY;
   std::vector<double> fCubeZ;

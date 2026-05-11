@@ -10,8 +10,6 @@
 #include "RunAction.hh"
 
 #include "G4Event.hh"
-#include "G4PrimaryParticle.hh"
-#include "G4PrimaryVertex.hh"
 #include "G4SystemOfUnits.hh"
 
 #include <cmath>
@@ -39,16 +37,7 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
   fVoxelMap.clear();
 }
 
-void EventAction::EndOfEventAction(const G4Event* event) {
-  G4PrimaryVertex* primaryVertex = event->GetPrimaryVertex();
-  if (primaryVertex) {
-    G4PrimaryParticle* primary = primaryVertex->GetPrimary();
-    if (primary) {
-      fRecord.px = primary->GetPx();
-      fRecord.py = primary->GetPy();
-      fRecord.pz = primary->GetPz();
-    }
-  }
+void EventAction::EndOfEventAction(const G4Event*) {
 
   for (VoxelMap::const_iterator it = fVoxelMap.begin(); it != fVoxelMap.end(); ++it) {
     const G4int ix = std::get<0>(it->first);
@@ -79,8 +68,14 @@ void EventAction::AddEnergyDeposit(const G4ThreeVector& position, G4double edep)
   fVoxelMap[VoxelIndex(ix, iy, iz)] += edep;
 }
 
-void EventAction::SetPrimaryMomentum(const G4ThreeVector& momentum) {
+void EventAction::SetPrimaryParticleInfo(const G4ThreeVector& momentum,
+                                         G4double energy,
+                                         G4double momentumAbs,
+                                         G4int pdgCode) {
   fRecord.px = momentum.x();
   fRecord.py = momentum.y();
   fRecord.pz = momentum.z();
+  fRecord.energy = energy;
+  fRecord.momentumAbs = momentumAbs;
+  fRecord.pdgCode = pdgCode;
 }

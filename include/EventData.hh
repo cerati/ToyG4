@@ -16,9 +16,12 @@
 
 struct EventRecord {
   G4int eventNumber = -1;
+  G4int pdgCode = 0;
   G4double px = 0.;
   G4double py = 0.;
   G4double pz = 0.;
+  G4double energy = 0.;
+  G4double momentumAbs = 0.;
   std::vector<G4double> cubeX;
   std::vector<G4double> cubeY;
   std::vector<G4double> cubeZ;

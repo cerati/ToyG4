@@ -20,9 +20,12 @@ RunAction::RunAction()
     fOutputFile(),
     fTree(0),
     fEventNumber(-1),
+    fPdgCode(0),
     fPx(0.),
     fPy(0.),
     fPz(0.),
+    fEnergy(0.),
+    fMomentumAbs(0.),
     fCubeX(),
     fCubeY(),
     fCubeZ(),
@@ -39,9 +42,12 @@ void RunAction::BeginOfRunAction(const G4Run*) {
   fTree = new TTree("events", "Muon energy deposition in 5 mm cubes");
 
   fTree->Branch("event", &fEventNumber);
+  fTree->Branch("pdgCode", &fPdgCode);
+  fTree->Branch("energy_MeV", &fEnergy);
   fTree->Branch("px_MeV", &fPx);
   fTree->Branch("py_MeV", &fPy);
   fTree->Branch("pz_MeV", &fPz);
+  fTree->Branch("pabs_MeV", &fMomentumAbs);
   fTree->Branch("cube_x_mm", &fCubeX);
   fTree->Branch("cube_y_mm", &fCubeY);
   fTree->Branch("cube_z_mm", &fCubeZ);
@@ -66,9 +72,12 @@ void RunAction::EndOfRunAction(const G4Run*) {
 
 void RunAction::FillEvent(const EventRecord& record) {
   fEventNumber = record.eventNumber;
+  fPdgCode = record.pdgCode;
+  fEnergy = record.energy / MeV;
   fPx = record.px / MeV;
   fPy = record.py / MeV;
   fPz = record.pz / MeV;
+  fMomentumAbs = record.momentumAbs / MeV;
 
   fCubeX.assign(record.cubeX.begin(), record.cubeX.end());
   fCubeY.assign(record.cubeY.begin(), record.cubeY.end());

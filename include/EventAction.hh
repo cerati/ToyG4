@@ -24,7 +24,10 @@ public:
   virtual void EndOfEventAction(const G4Event* event);
 
   void AddEnergyDeposit(const G4ThreeVector& position, G4double edep);
-  void SetPrimaryMomentum(const G4ThreeVector& momentum);
+  void SetPrimaryParticleInfo(const G4ThreeVector& momentum,
+                              G4double energy,
+                              G4double momentumAbs,
+                              G4int pdgCode);
 
 private:
   RunAction* fRunAction;
