@@ -32,6 +32,9 @@ RunAction::RunAction()
     fH5PdgCode(),
     fH5Energy(),
     fH5EdepFlat(),
+    fH5CubeXFlat(),
+    fH5CubeYFlat(),
+    fH5CubeZFlat(),
     fH5EdepOffsets(),
     fEventNumber(-1),
     fPdgCode(0),
@@ -61,6 +64,9 @@ void RunAction::BeginOfRunAction(const G4Run*) {
     fH5PdgCode.clear();
     fH5Energy.clear();
     fH5EdepFlat.clear();
+    fH5CubeXFlat.clear();
+    fH5CubeYFlat.clear();
+    fH5CubeZFlat.clear();
     fH5EdepOffsets.clear();
     fH5EdepOffsets.push_back(0);
     G4cout << "[ToyG4] Writing HDF5 output to: " << fOutputFileName << G4endl;
@@ -124,6 +130,9 @@ void RunAction::FillEvent(const EventRecord& record) {
     fH5Energy.push_back(record.energy / MeV);
     for (std::size_t i = 0; i < record.edep.size(); ++i) {
       fH5EdepFlat.push_back(record.edep[i] / MeV);
+      fH5CubeXFlat.push_back(record.cubeX[i] / mm);
+      fH5CubeYFlat.push_back(record.cubeY[i] / mm);
+      fH5CubeZFlat.push_back(record.cubeZ[i] / mm);
     }
     fH5EdepOffsets.push_back(static_cast<std::uint64_t>(fH5EdepFlat.size()));
     return;
@@ -247,10 +256,24 @@ void RunAction::WriteHdf5Output() {
   const hsize_t nFlat = static_cast<hsize_t>(fH5EdepFlat.size());
   const hsize_t nOffsets = static_cast<hsize_t>(fH5EdepOffsets.size());
 
+  // Sanity check: coordinate arrays must be the same length as edep_flat
+  if (fH5CubeXFlat.size() != fH5EdepFlat.size() ||
+      fH5CubeYFlat.size() != fH5EdepFlat.size() ||
+      fH5CubeZFlat.size() != fH5EdepFlat.size()) {
+    G4Exception("RunAction::WriteHdf5Output",
+                "ToyG4Run009",
+                FatalException,
+                "HDF5 coordinate flat arrays are not aligned with edep_flat.");
+    return;
+  }
+
   const bool ok =
       write1D("pdgCode", H5T_NATIVE_INT, nEvents, fH5PdgCode.empty() ? 0 : fH5PdgCode.data()) &&
       write1D("energy_MeV", H5T_NATIVE_DOUBLE, nEvents, fH5Energy.empty() ? 0 : fH5Energy.data()) &&
       write1D("edep_MeV_flat", H5T_NATIVE_DOUBLE, nFlat, fH5EdepFlat.empty() ? 0 : fH5EdepFlat.data()) &&
+      write1D("cube_x_mm_flat", H5T_NATIVE_DOUBLE, nFlat, fH5CubeXFlat.empty() ? 0 : fH5CubeXFlat.data()) &&
+      write1D("cube_y_mm_flat", H5T_NATIVE_DOUBLE, nFlat, fH5CubeYFlat.empty() ? 0 : fH5CubeYFlat.data()) &&
+      write1D("cube_z_mm_flat", H5T_NATIVE_DOUBLE, nFlat, fH5CubeZFlat.empty() ? 0 : fH5CubeZFlat.data()) &&
       write1D("edep_offsets", H5T_NATIVE_UINT64, nOffsets, fH5EdepOffsets.empty() ? 0 : fH5EdepOffsets.data());
 
   H5Fclose(file);

@@ -167,11 +167,19 @@ HDF5 mode (set /toyG4/run/setOutputFormat hdf5) writes a reduced schema:
 - pdgCode (1D int, one value per event)
 - energy_MeV (1D double, one value per event)
 - edep_MeV_flat (1D double, flattened voxel edep values for all events)
+- cube_x_mm_flat (1D double, flattened voxel x center position in mm)
+- cube_y_mm_flat (1D double, flattened voxel y center position in mm)
+- cube_z_mm_flat (1D double, flattened voxel z center position in mm)
 - edep_offsets (1D uint64, length = nEvents + 1)
 
-For event i, voxel edep values are:
+All four flat arrays are index-aligned: element k in each corresponds to the same voxel.
+
+For event i, voxel data are:
 
 - edep_MeV_flat[edep_offsets[i] : edep_offsets[i+1]]
+- cube_x_mm_flat[edep_offsets[i] : edep_offsets[i+1]]
+- cube_y_mm_flat[edep_offsets[i] : edep_offsets[i+1]]
+- cube_z_mm_flat[edep_offsets[i] : edep_offsets[i+1]]
 
 ## Common Pitfalls
 

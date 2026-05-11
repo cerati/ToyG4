@@ -46,6 +46,9 @@ private:
   std::vector<int> fH5PdgCode;
   std::vector<double> fH5Energy;
   std::vector<double> fH5EdepFlat;
+  std::vector<double> fH5CubeXFlat;
+  std::vector<double> fH5CubeYFlat;
+  std::vector<double> fH5CubeZFlat;
   std::vector<std::uint64_t> fH5EdepOffsets;
 
   void WriteHdf5Output();
