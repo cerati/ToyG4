@@ -75,6 +75,11 @@ private:
   std::vector<double> fVoxelDominantFraction;
   std::vector<double> fScintPhotons;
   std::vector<double> fIonizationElectrons;
+
+  // Progress bar state
+  int fTotalEvents;
+  int fProcessedEvents;
+  int fLastPrintedPercent;
 };
 
 #endif

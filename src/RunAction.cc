@@ -15,6 +15,9 @@
 #include "G4SystemOfUnits.hh"
 #include "G4ios.hh"
 
+#include <iomanip>
+#include <iostream>
+
 #ifdef TOYG4_USE_HDF5
 #include "hdf5.h"
 
@@ -84,6 +87,9 @@ RunAction::RunAction()
     fScintPhotons(),
     fIonizationElectrons() {
   fMessenger = new RunActionMessenger(this);
+  fTotalEvents       = 0;
+  fProcessedEvents   = 0;
+  fLastPrintedPercent = -1;
 #ifdef TOYG4_USE_HDF5
   fH5File           = -1;
   fH5DsetPdgCode    = -1;
@@ -101,7 +107,11 @@ RunAction::~RunAction() {
   delete fMessenger;
 }
 
-void RunAction::BeginOfRunAction(const G4Run*) {
+void RunAction::BeginOfRunAction(const G4Run* run) {
+  fTotalEvents        = run ? run->GetNumberOfEventToBeProcessed() : 0;
+  fProcessedEvents    = 0;
+  fLastPrintedPercent = -1;
+
   if (fOutputFormat == "hdf5") {
 #ifdef TOYG4_USE_HDF5
     fH5CurrentOffset = 0;
@@ -188,6 +198,8 @@ void RunAction::EndOfRunAction(const G4Run*) {
       G4cout << "[ToyG4] HDF5 file closed: " << fOutputFileName << G4endl;
     }
 #endif
+    // End the progress bar line
+    std::cout << "\n" << std::flush;
     return;
   }
 
@@ -202,9 +214,38 @@ void RunAction::EndOfRunAction(const G4Run*) {
   fOutputFile->Close();
   fOutputFile.reset();
   fTree = 0;
+  // End the progress bar line
+  std::cout << "\n" << std::flush;
 }
 
 void RunAction::FillEvent(const EventRecord& record) {
+  ++fProcessedEvents;
+
+  if (fTotalEvents > 0) {
+    const int pct = (fProcessedEvents * 100) / fTotalEvents;
+    const int updateEvery = std::max(1, fTotalEvents / 1000);
+    const bool shouldRefreshPct =
+        (pct != fLastPrintedPercent) ||
+        (fProcessedEvents == 1) ||
+        (fProcessedEvents == fTotalEvents) ||
+        ((fProcessedEvents % updateEvery) == 0);
+
+    if (shouldRefreshPct) {
+      fLastPrintedPercent = pct;
+    }
+
+    const int shownPct = std::max(0, fLastPrintedPercent);
+    const int filled = shownPct / 2;           // bar width = 50 chars
+    const int empty  = 50 - filled;
+    std::cout << "\r[ToyG4] ["
+              << std::string(filled, '#')
+              << std::string(empty,  ' ')
+              << "] "
+              << std::setw(3) << shownPct << "% ("
+              << fProcessedEvents << "/" << fTotalEvents << ")"
+              << std::flush;
+  }
+
   if (fOutputFormat == "hdf5") {
 #ifdef TOYG4_USE_HDF5
     const int    pdg    = record.pdgCode;
