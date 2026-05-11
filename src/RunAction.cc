@@ -17,6 +17,44 @@
 
 #ifdef TOYG4_USE_HDF5
 #include "hdf5.h"
+
+// Append `count` elements of `type` to an extendible 1-D dataset.
+static bool H5Append(hid_t dset, hid_t type, hsize_t count, const void* data) {
+  hid_t filespace = H5Dget_space(dset);
+  hsize_t currentSize = 0;
+  H5Sget_simple_extent_dims(filespace, &currentSize, 0);
+  H5Sclose(filespace);
+
+  const hsize_t newSize = currentSize + count;
+  if (H5Dset_extent(dset, &newSize) < 0) return false;
+
+  filespace = H5Dget_space(dset);
+  if (H5Sselect_hyperslab(filespace, H5S_SELECT_SET, &currentSize, 0, &count, 0) < 0) {
+    H5Sclose(filespace);
+    return false;
+  }
+
+  const hid_t memspace = H5Screate_simple(1, &count, 0);
+  const bool ok = (H5Dwrite(dset, type, memspace, filespace, H5P_DEFAULT, data) >= 0);
+  H5Sclose(memspace);
+  H5Sclose(filespace);
+  return ok;
+}
+
+// Create an empty unlimited/chunked 1-D dataset.
+static hid_t H5CreateExtendible(hid_t file, const char* name, hid_t type, hsize_t chunkSize) {
+  const hsize_t initDims = 0;
+  const hsize_t maxDims  = H5S_UNLIMITED;
+  const hid_t space = H5Screate_simple(1, &initDims, &maxDims);
+  if (space < 0) return -1;
+
+  const hid_t dcpl = H5Pcreate(H5P_DATASET_CREATE);
+  H5Pset_chunk(dcpl, 1, &chunkSize);
+  const hid_t dset = H5Dcreate2(file, name, type, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
+  H5Pclose(dcpl);
+  H5Sclose(space);
+  return dset;
+}
 #endif
 
 #include "TFile.h"
@@ -29,13 +67,6 @@ RunAction::RunAction()
     fMessenger(0),
     fOutputFile(),
     fTree(0),
-    fH5PdgCode(),
-    fH5Energy(),
-    fH5EdepFlat(),
-    fH5CubeXFlat(),
-    fH5CubeYFlat(),
-    fH5CubeZFlat(),
-    fH5EdepOffsets(),
     fEventNumber(-1),
     fPdgCode(0),
     fPx(0.),
@@ -53,6 +84,17 @@ RunAction::RunAction()
     fScintPhotons(),
     fIonizationElectrons() {
   fMessenger = new RunActionMessenger(this);
+#ifdef TOYG4_USE_HDF5
+  fH5File           = -1;
+  fH5DsetPdgCode    = -1;
+  fH5DsetEnergy     = -1;
+  fH5DsetEdepFlat   = -1;
+  fH5DsetCubeXFlat  = -1;
+  fH5DsetCubeYFlat  = -1;
+  fH5DsetCubeZFlat  = -1;
+  fH5DsetOffsets    = -1;
+  fH5CurrentOffset  = 0;
+#endif
 }
 
 RunAction::~RunAction() {
@@ -61,15 +103,40 @@ RunAction::~RunAction() {
 
 void RunAction::BeginOfRunAction(const G4Run*) {
   if (fOutputFormat == "hdf5") {
-    fH5PdgCode.clear();
-    fH5Energy.clear();
-    fH5EdepFlat.clear();
-    fH5CubeXFlat.clear();
-    fH5CubeYFlat.clear();
-    fH5CubeZFlat.clear();
-    fH5EdepOffsets.clear();
-    fH5EdepOffsets.push_back(0);
+#ifdef TOYG4_USE_HDF5
+    fH5CurrentOffset = 0;
+    fH5File = H5Fcreate(fOutputFileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (fH5File < 0) {
+      G4ExceptionDescription desc;
+      desc << "Failed to create HDF5 output file: " << fOutputFileName;
+      G4Exception("RunAction::BeginOfRunAction", "ToyG4Run003", FatalException, desc);
+      return;
+    }
+
+    const hsize_t chunkEvt  = 1024;
+    const hsize_t chunkFlat = 65536;
+    fH5DsetPdgCode   = H5CreateExtendible(fH5File, "pdgCode",        H5T_NATIVE_INT,    chunkEvt);
+    fH5DsetEnergy    = H5CreateExtendible(fH5File, "energy_MeV",     H5T_NATIVE_DOUBLE, chunkEvt);
+    fH5DsetEdepFlat  = H5CreateExtendible(fH5File, "edep_MeV_flat",  H5T_NATIVE_DOUBLE, chunkFlat);
+    fH5DsetCubeXFlat = H5CreateExtendible(fH5File, "cube_x_mm_flat", H5T_NATIVE_DOUBLE, chunkFlat);
+    fH5DsetCubeYFlat = H5CreateExtendible(fH5File, "cube_y_mm_flat", H5T_NATIVE_DOUBLE, chunkFlat);
+    fH5DsetCubeZFlat = H5CreateExtendible(fH5File, "cube_z_mm_flat", H5T_NATIVE_DOUBLE, chunkFlat);
+    fH5DsetOffsets   = H5CreateExtendible(fH5File, "edep_offsets",   H5T_NATIVE_UINT64, chunkEvt);
+
+    if (fH5DsetPdgCode < 0 || fH5DsetEnergy < 0 || fH5DsetEdepFlat < 0 ||
+        fH5DsetCubeXFlat < 0 || fH5DsetCubeYFlat < 0 || fH5DsetCubeZFlat < 0 ||
+        fH5DsetOffsets < 0) {
+      G4Exception("RunAction::BeginOfRunAction", "ToyG4Run010", FatalException,
+                  "Failed to create one or more HDF5 datasets.");
+      return;
+    }
+
+    // Write the initial offset entry (0) so edep_offsets has length nEvents+1.
+    const std::uint64_t zero = 0;
+    H5Append(fH5DsetOffsets, H5T_NATIVE_UINT64, 1, &zero);
+
     G4cout << "[ToyG4] Writing HDF5 output to: " << fOutputFileName << G4endl;
+#endif
     return;
   }
 
@@ -107,7 +174,20 @@ void RunAction::BeginOfRunAction(const G4Run*) {
 
 void RunAction::EndOfRunAction(const G4Run*) {
   if (fOutputFormat == "hdf5") {
-    WriteHdf5Output();
+#ifdef TOYG4_USE_HDF5
+    if (fH5File >= 0) {
+      H5Dclose(fH5DsetPdgCode);
+      H5Dclose(fH5DsetEnergy);
+      H5Dclose(fH5DsetEdepFlat);
+      H5Dclose(fH5DsetCubeXFlat);
+      H5Dclose(fH5DsetCubeYFlat);
+      H5Dclose(fH5DsetCubeZFlat);
+      H5Dclose(fH5DsetOffsets);
+      H5Fclose(fH5File);
+      fH5File = -1;
+      G4cout << "[ToyG4] HDF5 file closed: " << fOutputFileName << G4endl;
+    }
+#endif
     return;
   }
 
@@ -126,15 +206,30 @@ void RunAction::EndOfRunAction(const G4Run*) {
 
 void RunAction::FillEvent(const EventRecord& record) {
   if (fOutputFormat == "hdf5") {
-    fH5PdgCode.push_back(record.pdgCode);
-    fH5Energy.push_back(record.energy / MeV);
-    for (std::size_t i = 0; i < record.edep.size(); ++i) {
-      fH5EdepFlat.push_back(record.edep[i] / MeV);
-      fH5CubeXFlat.push_back(record.cubeX[i] / mm);
-      fH5CubeYFlat.push_back(record.cubeY[i] / mm);
-      fH5CubeZFlat.push_back(record.cubeZ[i] / mm);
+#ifdef TOYG4_USE_HDF5
+    const int    pdg    = record.pdgCode;
+    const double energy = record.energy / MeV;
+    H5Append(fH5DsetPdgCode, H5T_NATIVE_INT,    1, &pdg);
+    H5Append(fH5DsetEnergy,  H5T_NATIVE_DOUBLE, 1, &energy);
+
+    const hsize_t nVoxels = static_cast<hsize_t>(record.edep.size());
+    if (nVoxels > 0) {
+      std::vector<double> edep(nVoxels), cx(nVoxels), cy(nVoxels), cz(nVoxels);
+      for (hsize_t i = 0; i < nVoxels; ++i) {
+        edep[i] = record.edep[i]  / MeV;
+        cx[i]   = record.cubeX[i] / mm;
+        cy[i]   = record.cubeY[i] / mm;
+        cz[i]   = record.cubeZ[i] / mm;
+      }
+      H5Append(fH5DsetEdepFlat,  H5T_NATIVE_DOUBLE, nVoxels, edep.data());
+      H5Append(fH5DsetCubeXFlat, H5T_NATIVE_DOUBLE, nVoxels, cx.data());
+      H5Append(fH5DsetCubeYFlat, H5T_NATIVE_DOUBLE, nVoxels, cy.data());
+      H5Append(fH5DsetCubeZFlat, H5T_NATIVE_DOUBLE, nVoxels, cz.data());
     }
-    fH5EdepOffsets.push_back(static_cast<std::uint64_t>(fH5EdepFlat.size()));
+
+    fH5CurrentOffset += nVoxels;
+    H5Append(fH5DsetOffsets, H5T_NATIVE_UINT64, 1, &fH5CurrentOffset);
+#endif
     return;
   }
 
@@ -204,90 +299,4 @@ void RunAction::SetOutputFormat(const G4String& format) {
 
 const G4String& RunAction::GetOutputFormat() const {
   return fOutputFormat;
-}
-
-void RunAction::WriteHdf5Output() {
-#ifndef TOYG4_USE_HDF5
-  G4Exception("RunAction::WriteHdf5Output",
-              "ToyG4Run006",
-              FatalException,
-              "HDF5 output requested but HDF5 support is not enabled in this build.");
-#else
-  const hid_t file = H5Fcreate(fOutputFileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-  if (file < 0) {
-    G4ExceptionDescription description;
-    description << "Failed to create HDF5 output file: " << fOutputFileName;
-    G4Exception("RunAction::WriteHdf5Output",
-                "ToyG4Run007",
-                FatalException,
-                description);
-    return;
-  }
-
-  auto write1D = [file](const char* name,
-                        hid_t h5Type,
-                        hsize_t size,
-                        const void* data) -> bool {
-    const hid_t space = H5Screate_simple(1, &size, 0);
-    if (space < 0) {
-      return false;
-    }
-
-    const hid_t dset = H5Dcreate2(file, name, h5Type, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (dset < 0) {
-      H5Sclose(space);
-      return false;
-    }
-
-    if (size > 0 && data) {
-      if (H5Dwrite(dset, h5Type, H5S_ALL, H5S_ALL, H5P_DEFAULT, data) < 0) {
-        H5Dclose(dset);
-        H5Sclose(space);
-        return false;
-      }
-    }
-
-    H5Dclose(dset);
-    H5Sclose(space);
-    return true;
-  };
-
-  const hsize_t nEvents = static_cast<hsize_t>(fH5PdgCode.size());
-  const hsize_t nFlat = static_cast<hsize_t>(fH5EdepFlat.size());
-  const hsize_t nOffsets = static_cast<hsize_t>(fH5EdepOffsets.size());
-
-  // Sanity check: coordinate arrays must be the same length as edep_flat
-  if (fH5CubeXFlat.size() != fH5EdepFlat.size() ||
-      fH5CubeYFlat.size() != fH5EdepFlat.size() ||
-      fH5CubeZFlat.size() != fH5EdepFlat.size()) {
-    G4Exception("RunAction::WriteHdf5Output",
-                "ToyG4Run009",
-                FatalException,
-                "HDF5 coordinate flat arrays are not aligned with edep_flat.");
-    return;
-  }
-
-  const bool ok =
-      write1D("pdgCode", H5T_NATIVE_INT, nEvents, fH5PdgCode.empty() ? 0 : fH5PdgCode.data()) &&
-      write1D("energy_MeV", H5T_NATIVE_DOUBLE, nEvents, fH5Energy.empty() ? 0 : fH5Energy.data()) &&
-      write1D("edep_MeV_flat", H5T_NATIVE_DOUBLE, nFlat, fH5EdepFlat.empty() ? 0 : fH5EdepFlat.data()) &&
-      write1D("cube_x_mm_flat", H5T_NATIVE_DOUBLE, nFlat, fH5CubeXFlat.empty() ? 0 : fH5CubeXFlat.data()) &&
-      write1D("cube_y_mm_flat", H5T_NATIVE_DOUBLE, nFlat, fH5CubeYFlat.empty() ? 0 : fH5CubeYFlat.data()) &&
-      write1D("cube_z_mm_flat", H5T_NATIVE_DOUBLE, nFlat, fH5CubeZFlat.empty() ? 0 : fH5CubeZFlat.data()) &&
-      write1D("edep_offsets", H5T_NATIVE_UINT64, nOffsets, fH5EdepOffsets.empty() ? 0 : fH5EdepOffsets.data());
-
-  H5Fclose(file);
-
-  if (!ok) {
-    G4ExceptionDescription description;
-    description << "Failed while writing datasets to HDF5 file: " << fOutputFileName;
-    G4Exception("RunAction::WriteHdf5Output",
-                "ToyG4Run008",
-                FatalException,
-                description);
-    return;
-  }
-
-  G4cout << "[ToyG4] HDF5 events written: " << fH5PdgCode.size() << G4endl;
-#endif
 }

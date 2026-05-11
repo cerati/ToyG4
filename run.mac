@@ -17,7 +17,7 @@
 #/toyG4/run/setOutputFile ./lar_muon_voxels.root
 # HDF5 example:
 /toyG4/run/setOutputFormat hdf5
-/toyG4/run/setOutputFile ./lar_muon_voxels.h5
+/toyG4/run/setOutputFile /exp/icarus/data/users/cerati/ToyG4/lar_muon_voxels.h5
 
 # Optional: Configure voxel size (default is 5 mm)
 /toyG4/detector/setVoxelSize 5 mm
@@ -44,4 +44,4 @@
 /toyG4/generator/addPdgRange 2112 0.50  1 GeV linear
 /toyG4/generator/listPdgs
 
-/run/beamOn 10000
+/run/beamOn 1000000

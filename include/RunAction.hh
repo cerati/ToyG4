@@ -15,6 +15,10 @@
 #include <memory>
 #include <vector>
 
+#ifdef TOYG4_USE_HDF5
+#include "hdf5.h"
+#endif
+
 class G4Run;
 class TFile;
 class TTree;
@@ -43,15 +47,17 @@ private:
   std::unique_ptr<TFile> fOutputFile;
   TTree* fTree;
 
-  std::vector<int> fH5PdgCode;
-  std::vector<double> fH5Energy;
-  std::vector<double> fH5EdepFlat;
-  std::vector<double> fH5CubeXFlat;
-  std::vector<double> fH5CubeYFlat;
-  std::vector<double> fH5CubeZFlat;
-  std::vector<std::uint64_t> fH5EdepOffsets;
-
-  void WriteHdf5Output();
+#ifdef TOYG4_USE_HDF5
+  hid_t fH5File;
+  hid_t fH5DsetPdgCode;
+  hid_t fH5DsetEnergy;
+  hid_t fH5DsetEdepFlat;
+  hid_t fH5DsetCubeXFlat;
+  hid_t fH5DsetCubeYFlat;
+  hid_t fH5DsetCubeZFlat;
+  hid_t fH5DsetOffsets;
+  std::uint64_t fH5CurrentOffset;
+#endif
 
   int fEventNumber;
   int fPdgCode;
